@@ -23,11 +23,6 @@
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>${env.HOME}/.aws/</directory>
-            </resource>
-        </resources>
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -43,6 +38,30 @@
                 <configuration>
                     <mainClass>com.amazonaws.samples.S3Sample</mainClass>
                 </configuration>
+            </plugin>
+            <!--
+                Produces a self-contained runnable jar (target/aws-java-sample-1.0.jar)
+                so the app can be deployed to EC2 and launched with `java -jar`.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.amazonaws.samples.S3Sample</mainClass>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

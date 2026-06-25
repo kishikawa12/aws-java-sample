@@ -63,8 +63,8 @@ public class S3Sample {
          */
 
         AmazonS3 s3 = new AmazonS3Client();
-        Region usWest2 = Region.getRegion(Regions.US_WEST_2);
-        s3.setRegion(usWest2);
+        Region usEast2 = Region.getRegion(Regions.US_EAST_2);
+        s3.setRegion(usEast2);
 
         String bucketName = "my-first-s3-bucket-" + UUID.randomUUID();
         String key = "MyObjectKey";

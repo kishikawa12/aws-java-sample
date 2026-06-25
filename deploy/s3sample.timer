@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the AWS Java S3 sample every 2 minutes
+
+[Timer]
+# Fire shortly after boot, then every 2 minutes thereafter.
+OnBootSec=1min
+OnUnitActiveSec=2min
+AccuracySec=10s
+Unit=s3sample.service
+
+[Install]
+WantedBy=timers.target

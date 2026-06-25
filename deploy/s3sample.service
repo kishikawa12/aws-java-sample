@@ -1,0 +1,10 @@
+[Unit]
+Description=AWS Java sample S3 walkthrough (one-shot, run on a timer)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Written on every CI/CD deploy; contains DT_RELEASE_VERSION=<label>
+EnvironmentFile=/opt/s3sample/release.env
+ExecStart=/opt/s3sample/run.sh
