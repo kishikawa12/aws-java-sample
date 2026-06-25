@@ -52,20 +52,12 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
  */
 public class S3Sample {
 
-    public static void main(String[] args) throws IOException {
-        /*
-         * Create your credentials file at ~/.aws/credentials (C:\Users\USER_NAME\.aws\credentials for Windows users) 
-         * and save the following lines after replacing the underlined values with your own.
-         *
-         * [default]
-         * aws_access_key_id = YOUR_ACCESS_KEY_ID
-         * aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-         */
-
+    public static void main(String[] args) throws IOException, InterruptedException {
         AmazonS3 s3 = new AmazonS3Client();
         Region usEast2 = Region.getRegion(Regions.US_EAST_2);
         s3.setRegion(usEast2);
 
+        while (true) {
         String bucketName = "my-first-s3-bucket-" + UUID.randomUUID();
         String key = "MyObjectKey";
 
@@ -168,6 +160,8 @@ public class S3Sample {
                     + "such as not being able to access the network.");
             System.out.println("Error Message: " + ace.getMessage());
         }
+        Thread.sleep(30_000);
+        } // end while
     }
 
     /**
