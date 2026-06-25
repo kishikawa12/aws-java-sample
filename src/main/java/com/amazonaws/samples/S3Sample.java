@@ -58,6 +58,14 @@ public class S3Sample {
         s3.setRegion(usEast2);
 
         while (true) {
+            runCycle(s3);
+            Thread.sleep(30_000);
+        }
+    }
+
+    // Set com.amazonaws.samples.S3Sample.runCycle as the custom entry point in Dynatrace.
+    // Each call is a discrete unit of work; OneAgent traces it as a separate PurePath.
+    static void runCycle(AmazonS3 s3) throws IOException {
         String bucketName = "my-first-s3-bucket-" + UUID.randomUUID();
         String key = "MyObjectKey";
 
@@ -66,62 +74,23 @@ public class S3Sample {
         System.out.println("===========================================\n");
 
         try {
-            /*
-             * Create a new S3 bucket - Amazon S3 bucket names are globally unique,
-             * so once a bucket name has been taken by any user, you can't create
-             * another bucket with that same name.
-             *
-             * You can optionally specify a location for your bucket if you want to
-             * keep your data closer to your applications or users.
-             */
             System.out.println("Creating bucket " + bucketName + "\n");
             s3.createBucket(bucketName);
 
-            /*
-             * List the buckets in your account
-             */
             System.out.println("Listing buckets");
             for (Bucket bucket : s3.listBuckets()) {
                 System.out.println(" - " + bucket.getName());
             }
             System.out.println();
 
-            /*
-             * Upload an object to your bucket - You can easily upload a file to
-             * S3, or upload directly an InputStream if you know the length of
-             * the data in the stream. You can also specify your own metadata
-             * when uploading to S3, which allows you set a variety of options
-             * like content-type and content-encoding, plus additional metadata
-             * specific to your applications.
-             */
             System.out.println("Uploading a new object to S3 from a file\n");
             s3.putObject(new PutObjectRequest(bucketName, key, createSampleFile()));
 
-            /*
-             * Download an object - When you download an object, you get all of
-             * the object's metadata and a stream from which to read the contents.
-             * It's important to read the contents of the stream as quickly as
-             * possibly since the data is streamed directly from Amazon S3 and your
-             * network connection will remain open until you read all the data or
-             * close the input stream.
-             *
-             * GetObjectRequest also supports several other options, including
-             * conditional downloading of objects based on modification times,
-             * ETags, and selectively downloading a range of an object.
-             */
             System.out.println("Downloading an object");
             S3Object object = s3.getObject(new GetObjectRequest(bucketName, key));
             System.out.println("Content-Type: "  + object.getObjectMetadata().getContentType());
             displayTextInputStream(object.getObjectContent());
 
-            /*
-             * List objects in your bucket by prefix - There are many options for
-             * listing the objects in your bucket.  Keep in mind that buckets with
-             * many objects might truncate their results when listing their objects,
-             * so be sure to check if the returned object listing is truncated, and
-             * use the AmazonS3.listNextBatchOfObjects(...) operation to retrieve
-             * additional results.
-             */
             System.out.println("Listing objects");
             ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
                     .withBucketName(bucketName)
@@ -132,18 +101,9 @@ public class S3Sample {
             }
             System.out.println();
 
-            /*
-             * Delete an object - Unless versioning has been turned on for your bucket,
-             * there is no way to undelete an object, so use caution when deleting objects.
-             */
             System.out.println("Deleting an object\n");
             s3.deleteObject(bucketName, key);
 
-            /*
-             * Delete a bucket - A bucket must be completely empty before it can be
-             * deleted, so remember to delete any objects from your buckets before
-             * you try to delete them.
-             */
             System.out.println("Deleting bucket " + bucketName + "\n");
             s3.deleteBucket(bucketName);
         } catch (AmazonServiceException ase) {
@@ -160,8 +120,6 @@ public class S3Sample {
                     + "such as not being able to access the network.");
             System.out.println("Error Message: " + ace.getMessage());
         }
-        Thread.sleep(30_000);
-        } // end while
     }
 
     /**
