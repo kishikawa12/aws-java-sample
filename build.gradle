@@ -8,5 +8,6 @@ repositories {
 }
 
 dependencies {
-    compile 'com.amazonaws:aws-java-sdk:1.9.6'
+    implementation platform('software.amazon.awssdk:bom:2.31.1')
+    implementation 'software.amazon.awssdk:s3'
 }

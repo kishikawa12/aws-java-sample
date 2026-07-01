@@ -22,21 +22,23 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.file.Path;
 import java.util.UUID;
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.AmazonServiceException;
-import com.amazonaws.regions.Region;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.Bucket;
-import com.amazonaws.services.s3.model.GetObjectRequest;
-import com.amazonaws.services.s3.model.ListObjectsRequest;
-import com.amazonaws.services.s3.model.ObjectListing;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
-import com.amazonaws.services.s3.model.S3ObjectSummary;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.Bucket;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.DeleteBucketRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
  * This sample demonstrates how to make basic requests to Amazon S3 using
@@ -53,19 +55,20 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 public class S3Sample {
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        AmazonS3 s3 = new AmazonS3Client();
-        Region usEast2 = Region.getRegion(Regions.US_EAST_2);
-        s3.setRegion(usEast2);
+        try (S3Client s3 = S3Client.builder()
+                .region(Region.US_EAST_2)
+                .build()) {
 
-        while (true) {
-            runCycle(s3);
-            Thread.sleep(30_000);
+            while (true) {
+                runCycle(s3);
+                Thread.sleep(30_000);
+            }
         }
     }
 
     // Set com.amazonaws.samples.S3Sample.runCycle as the custom entry point in Dynatrace.
     // Each call is a discrete unit of work; OneAgent traces it as a separate PurePath.
-    static void runCycle(AmazonS3 s3) throws IOException {
+    static void runCycle(S3Client s3) throws IOException {
         String bucketName = "my-first-s3-bucket-" + UUID.randomUUID();
         String key = "MyObjectKey";
 
@@ -75,50 +78,49 @@ public class S3Sample {
 
         try {
             System.out.println("Creating bucket " + bucketName + "\n");
-            s3.createBucket(bucketName);
+            s3.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());
 
             System.out.println("Listing buckets");
-            for (Bucket bucket : s3.listBuckets()) {
-                System.out.println(" - " + bucket.getName());
+            for (Bucket bucket : s3.listBuckets().buckets()) {
+                System.out.println(" - " + bucket.name());
             }
             System.out.println();
 
             System.out.println("Uploading a new object to S3 from a file\n");
-            s3.putObject(new PutObjectRequest(bucketName, key, createSampleFile()));
+            s3.putObject(
+                    PutObjectRequest.builder().bucket(bucketName).key(key).build(),
+                    Path.of(createSampleFile().getAbsolutePath()));
 
             System.out.println("Downloading an object");
-            S3Object object = s3.getObject(new GetObjectRequest(bucketName, key));
-            System.out.println("Content-Type: "  + object.getObjectMetadata().getContentType());
-            displayTextInputStream(object.getObjectContent());
+            ResponseInputStream<GetObjectResponse> object = s3.getObject(
+                    GetObjectRequest.builder().bucket(bucketName).key(key).build());
+            System.out.println("Content-Type: " + object.response().contentType());
+            displayTextInputStream(object);
 
             System.out.println("Listing objects");
-            ObjectListing objectListing = s3.listObjects(new ListObjectsRequest()
-                    .withBucketName(bucketName)
-                    .withPrefix("My"));
-            for (S3ObjectSummary objectSummary : objectListing.getObjectSummaries()) {
-                System.out.println(" - " + objectSummary.getKey() + "  " +
-                        "(size = " + objectSummary.getSize() + ")");
+            ListObjectsResponse objectListing = s3.listObjects(ListObjectsRequest.builder()
+                    .bucket(bucketName)
+                    .prefix("My")
+                    .build());
+            for (S3Object objectSummary : objectListing.contents()) {
+                System.out.println(" - " + objectSummary.key() + "  " +
+                        "(size = " + objectSummary.size() + ")");
             }
             System.out.println();
 
             System.out.println("Deleting an object\n");
-            s3.deleteObject(bucketName, key);
+            s3.deleteObject(DeleteObjectRequest.builder().bucket(bucketName).key(key).build());
 
             System.out.println("Deleting bucket " + bucketName + "\n");
-            s3.deleteBucket(bucketName);
-        } catch (AmazonServiceException ase) {
-            System.out.println("Caught an AmazonServiceException, which means your request made it "
+            s3.deleteBucket(DeleteBucketRequest.builder().bucket(bucketName).build());
+        } catch (S3Exception ase) {
+            System.out.println("Caught an S3Exception, which means your request made it "
                     + "to Amazon S3, but was rejected with an error response for some reason.");
             System.out.println("Error Message:    " + ase.getMessage());
-            System.out.println("HTTP Status Code: " + ase.getStatusCode());
-            System.out.println("AWS Error Code:   " + ase.getErrorCode());
-            System.out.println("Error Type:       " + ase.getErrorType());
-            System.out.println("Request ID:       " + ase.getRequestId());
-        } catch (AmazonClientException ace) {
-            System.out.println("Caught an AmazonClientException, which means the client encountered "
-                    + "a serious internal problem while trying to communicate with S3, "
-                    + "such as not being able to access the network.");
-            System.out.println("Error Message: " + ace.getMessage());
+            System.out.println("HTTP Status Code: " + ase.statusCode());
+            System.out.println("AWS Error Code:   " + ase.awsErrorDetails().errorCode());
+            System.out.println("Error Type:       " + ase.awsErrorDetails().sdkHttpResponse().statusCode());
+            System.out.println("Request ID:       " + ase.requestId());
         }
     }
 
